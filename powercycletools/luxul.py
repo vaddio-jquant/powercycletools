@@ -1,4 +1,4 @@
-import aiohttp
+import httpx
 import asyncio
 import yaml
 
@@ -33,11 +33,23 @@ class LuxulPdu:
 
     async def _submit(self, data):
         url = f"http://{self.host}/outletsubmit.htm"
-        auth = aiohttp.BasicAuth(self.username, self.password)
-        async with aiohttp.ClientSession(auth=auth) as session:
-            async with session.post(url, data=data, ssl=False) as response:
-                response_text = await response.text()
-                return response.status, response_text
+        auth = (self.username, self.password)
+        try:
+            async with httpx.AsyncClient(auth=auth, verify=False, http2=False) as client:
+                response = await client.post(url, data=data)
+                return response.status_code, response.text
+        except httpx.RemoteProtocolError:
+            # There is a bug in the Luxul firmware that causes it to return a
+            # malformed HTTP response.  It sends an HTTP response that starts
+            # like this (2nd line is gross):
+            #
+            #   HTTP/1.1 200 OK
+            #   ConnectiHTTP/1.1 200 OK
+            #   Connection: close
+            #
+            # And this will cause sane parsers to throw an error.  We can
+            # ignore this error and pretend everything is OK...
+            return 200, "OK"
 
     async def set(self, outlet, on):
         data = {"controlnum": outlet, "command": "ON" if on else "OFF", "delay": "0"}
@@ -48,5 +60,3 @@ class LuxulPdu:
         data = {"controlnum": outlet, "command": "CYCLE", "delay": str(delay)}
         status, response_text = await self._submit(data)
         return status, response_text
-
-

@@ -1,7 +1,7 @@
 from . import luxul
 
 interfaces = {
-    "luxul-pdu": luxul.pdu,
+    "luxul-pdu": luxul.LuxulPdu,
 }
 
 models = {
