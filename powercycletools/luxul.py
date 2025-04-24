@@ -35,7 +35,9 @@ class LuxulPdu:
         url = f"http://{self.host}/outletsubmit.htm"
         auth = (self.username, self.password)
         try:
-            async with httpx.AsyncClient(auth=auth, verify=False, http2=False) as client:
+            async with httpx.AsyncClient(
+                auth=auth, verify=False, http2=False
+            ) as client:
                 response = await client.post(url, data=data)
                 return response.status_code, response.text
         except httpx.RemoteProtocolError:
@@ -51,12 +53,29 @@ class LuxulPdu:
             # ignore this error and pretend everything is OK...
             return 200, "OK"
 
-    async def set(self, outlet, on):
-        data = {"controlnum": outlet, "command": "ON" if on else "OFF", "delay": "0"}
+    async def power(self, outlet, on):
+        data = {"controlnum": outlet, "command": "ON" if on else "OFF"}
         status, response_text = await self._submit(data)
         return status, response_text
 
-    async def cycle(self, outlet, delay):
-        data = {"controlnum": outlet, "command": "CYCLE", "delay": str(delay)}
+    async def cycle(self, outlet):
+        data = {"controlnum": outlet, "command": "CYCLE"}
         status, response_text = await self._submit(data)
         return status, response_text
+
+    async def set_cycle_delay(self, outlet, delay):
+        data = {"controlnum": outlet, "delay": str(delay)}
+        status, response_text = await self._submit(data)
+        return status, response_text
+
+    async def set_name(self, outlet, name):
+        data = {"controlnum": outlet, "controlname": name}
+        status, response_text = await self._submit(data)
+        return status, response_text
+
+    async def get_status(self):
+        url = f"http://{self.host}/assets/js/json/settings.json"
+        auth = (self.username, self.password)
+        async with httpx.AsyncClient(auth=auth, verify=False, http2=False) as client:
+            response = await client.get(url)
+            return response.status_code, response.text
